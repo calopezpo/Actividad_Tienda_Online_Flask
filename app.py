@@ -8,7 +8,6 @@ app.config.from_object(Config)
 
 db.init_app(app)
 
-# --- RUTAS DE LA SEMANA 1 (Catálogo y Detalle) ---
 @app.route("/")
 def inicio():
     productos = Producto.query.filter_by(activo=True).all()
@@ -159,9 +158,6 @@ def eliminar_producto(producto_id):
     db.session.commit()
     flash(f"Producto '{producto.nombre}' desactivado del catálogo.", "success")
     return redirect(url_for("inicio"))
-
-
-# --- RUTAS DEL CARRITO DE COMPRAS (Exclusivas para clientes con sesión) ---
 
 @app.route("/carrito")
 @login_requerido
