@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from config import Config
 from models import db, Producto, ProductoFisico, ProductoDigital, ProductoPerecible, Usuario
+from auth import login_requerido, rol_requerido
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -60,9 +61,8 @@ def logout():
     flash("Sesión cerrada correctamente.", "success")
     return redirect(url_for("inicio"))
 
-
-# --- RUTAS CRUD DE PRODUCTOS (Crear, Editar, Desactivar) ---
 @app.route("/productos/nuevo/fisico", methods=["GET", "POST"])
+@rol_requerido("admin")
 def nuevo_producto_fisico():
     if request.method == "POST":
         try:
@@ -80,12 +80,14 @@ def nuevo_producto_fisico():
             return redirect(url_for("inicio"))
         except ValueError:
             flash("Revisa que los campos numéricos tengan valores válidos.", "danger")
+            db.session.rollback()
         except Exception:
             db.session.rollback()
             flash("Ocurrió un error. Verifica que el código no esté repetido.", "danger")
     return render_template("nuevo_fisico.html")
 
 @app.route("/productos/nuevo/digital", methods=["GET", "POST"])
+@rol_requerido("admin")
 def nuevo_producto_digital():
     if request.method == "POST":
         try:
@@ -102,12 +104,14 @@ def nuevo_producto_digital():
             return redirect(url_for("inicio"))
         except ValueError:
             flash("Revisa que los campos numéricos tengan valores válidos.", "danger")
+            db.session.rollback()
         except Exception:
             db.session.rollback()
             flash("Ocurrió un error. Verifica que el código no esté repetido.", "danger")
     return render_template("nuevo_digital.html")
 
 @app.route("/productos/nuevo/perecible", methods=["GET", "POST"])
+@rol_requerido("admin")
 def nuevo_producto_perecible():
     if request.method == "POST":
         try:
@@ -124,12 +128,14 @@ def nuevo_producto_perecible():
             return redirect(url_for("inicio"))
         except ValueError:
             flash("Revisa que los campos numéricos tengan valores válidos.", "danger")
+            db.session.rollback()
         except Exception:
             db.session.rollback()
             flash("Ocurrió un error. Verifica que el código no esté repetido.", "danger")
     return render_template("nuevo_perecible.html")
 
 @app.route("/productos/<int:producto_id>/editar", methods=["GET", "POST"])
+@rol_requerido("admin")
 def editar_producto(producto_id):
     producto = Producto.query.get_or_404(producto_id)
     if request.method == "POST":
@@ -142,15 +148,73 @@ def editar_producto(producto_id):
             return redirect(url_for("detalle_producto", producto_id=producto.id))
         except ValueError:
             flash("Revisa que los campos numéricos tengan valores válidos.", "danger")
+            db.session.rollback()
     return render_template("editar.html", producto=producto)
 
 @app.route("/productos/<int:producto_id>/eliminar", methods=["POST"])
+@rol_requerido("admin")
 def eliminar_producto(producto_id):
     producto = Producto.query.get_or_404(producto_id)
     producto.activo = False
     db.session.commit()
     flash(f"Producto '{producto.nombre}' desactivado del catálogo.", "success")
     return redirect(url_for("inicio"))
+
+
+# --- RUTAS DEL CARRITO DE COMPRAS (Exclusivas para clientes con sesión) ---
+
+@app.route("/carrito")
+@login_requerido
+def ver_carrito():
+    carrito = session.get("carrito", {})
+    productos_en_carrito = []
+    total_general = 0.0
+
+    for producto_id_str, cantidad in carrito.items():
+        producto = Producto.query.get(int(producto_id_str))
+        if producto:
+            precio = producto.precio_final()
+            subtotal = precio * cantidad
+            total_general += subtotal
+            productos_en_carrito.append({
+                "producto": producto,
+                "cantidad": cantidad,
+                "subtotal": subtotal
+            })
+
+    return render_template("carrito.html", items=productos_en_carrito, total=total_general)
+
+@app.route("/carrito/agregar/<int:producto_id>", methods=["POST"])
+@login_requerido
+def agregar_carrito(producto_id):
+    # Validar que el usuario sea cliente y no admin si lo deseas, o permitirlo
+    producto = Producto.query.get_or_404(producto_id)
+    
+    # Obtenemos o creamos el diccionario del carrito en la sesión
+    carrito = session.get("carrito", {})
+    
+    str_id = str(producto_id)
+    if str_id in carrito:
+        carrito[str_id] += 1
+    else:
+        carrito[str_id] = 1
+        
+    session["carrito"] = carrito
+    flash(f"Se agregó '{producto.nombre}' al carrito.", "success")
+    return redirect(url_for("ver_carrito"))
+
+@app.route("/carrito/eliminar/<int:producto_id>", methods=["POST"])
+@login_requerido
+def eliminar_del_carrito(producto_id):
+    carrito = session.get("carrito", {})
+    str_id = str(producto_id)
+    
+    if str_id in carrito:
+        pop_val = carrito.pop(str_id)
+        session["carrito"] = carrito
+        flash("Producto eliminado del carrito.", "info")
+        
+    return redirect(url_for("ver_carrito"))
 
 if __name__ == "__main__":
     app.run(debug=True)
