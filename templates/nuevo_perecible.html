@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+    <h2>🍓 Nuevo Producto Perecible</h2>
+    <form method="POST">
+        <div class="mb-3"><label>Código</label><input type="text" name="codigo" class="form-control" required></div>
+        <div class="mb-3"><label>Nombre</label><input type="text" name="nombre" class="form-control" required></div>
+        <div class="mb-3"><label>Días para vencer</label><input type="number" name="dias_para_vencer" class="form-control" required></div>
+        <button type="submit" class="btn btn-primary">Crear</button>
+    </form>
+{% endblock %}

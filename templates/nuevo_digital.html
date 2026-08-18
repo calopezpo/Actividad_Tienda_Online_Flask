@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+    <h2>💾 Nuevo Producto Digital</h2>
+    <form method="POST">
+        <div class="mb-3"><label>Código</label><input type="text" name="codigo" class="form-control" required></div>
+        <div class="mb-3"><label>Nombre</label><input type="text" name="nombre" class="form-control" required></div>
+        <div class="mb-3">
+            <label>Tipo de licencia</label>
+            <select name="licencia" class="form-control">
+                <option value="personal">Personal</option>
+                <option value="comercial">Comercial</option>
+                <option value="educativa">Educativa</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Crear</button>
+    </form>
+{% endblock %}
